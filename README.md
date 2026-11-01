@@ -1,6 +1,8 @@
-# Agent Shared Workspace — M3.1 Local Broker Prototype
+# Agent Shared Workspace — M3.2 MCP stdio Bridge Prototype
 
-**Status:** Tested local coordination core with a loopback-only HTTP broker (Python 3.11+, SQLite, no external runtime dependency). **Not production-ready.** No MCP adapter, actual Codex/Claude Code connection, native session access or web Kanban yet.
+**Status:** Tested local coordination core with a loopback-only HTTP broker (Python 3.11+, SQLite, no external runtime dependency). **Not production-ready.** Includes a handshake-era MCP stdio adapter tested with independent subprocesses, but no actual Codex/Claude Code CLI run, native session access or web Kanban yet.
+
+M3.2 adds a **stdio MCP adapter** using independent agent identities over the M3.1 broker. See [M3.2 setup and security contracts](docs/21-m3.2-mcp-stdio.md).
 
 M3.1 adds an **authenticated loopback broker** with strict RPC allowlisting, JSON size/Host/Origin checks and session revocation enforcement on top of M2.3. See [local broker contracts](docs/20-m3.1-local-broker.md).
 
@@ -58,7 +60,7 @@ A snapshot is a structured checkpoint, **not shared native model context, live s
 - M2.2: Sourced Shared Memory + bounded FTS5 search — acceptance-tested local prototype.
 - **M2.3: Permissioned Context Gateway, handoffs and incremental context updates — acceptance-tested local prototype.**
 - M3.1: Authenticated loopback broker — tested locally, subject to OS isolation limitations.
-- M3.2: MCP adapter and real provider compatibility — not implemented.
+- **M3.2: MCP stdio adapter — tested with separate subprocesses and a real broker; provider CLI compatibility still unverified.**
 - M3.3: Minimal Kanban — not implemented.
 - M4: Live multi-agent adverse-condition pilot and verified cost/quality measurements — not implemented.
 
