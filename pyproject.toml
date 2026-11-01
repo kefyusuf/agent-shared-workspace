@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-shared-workspace"
+version = "0.7.0"
+description = "Local, provider-independent agent workspace with permissioned context handoff and a local HTTP broker (M3.1 prototype)"
+requires-python = ">=3.11"
+license = {text = "UNLICENSED - prototype, not yet assigned an open-source license"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
