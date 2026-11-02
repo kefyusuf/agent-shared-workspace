@@ -38,6 +38,21 @@ class OperatorCliTests(unittest.TestCase):
         self.assertEqual(err.exception.code,2)
         self.assertNotIn('private-wrong-secret',output.getvalue())
 
+    def test_create_task_is_operator_only_and_idempotent(self):
+        import json
+        args=['create-task','--db',str(self.db),'--title','Compatibility pilot',
+              '--acceptance-criteria','Read and hand off verified context',
+              '--request-key','pilot-compat-task']
+        with patch('agent_workspace.operator_cli.getpass.getpass',return_value=self.root['operator_credential']):
+            with contextlib.redirect_stdout(StringIO()) as output:
+                self.assertEqual(main(args),0)
+            first=json.loads(output.getvalue())
+            with contextlib.redirect_stdout(StringIO()) as output:
+                self.assertEqual(main(args),0)
+            self.assertEqual(first,json.loads(output.getvalue()))
+        self.assertEqual(first['status'],'Ready')
+        self.assertEqual(len(self.ws.list_tasks(self.ws.open_session(self.root['operator_credential'])['session_token'])),1)
+
     def test_missing_db_never_creates_new_workspace(self):
         nonexistent=Path(self.tmp.name)/'nonexistent.db'
         with contextlib.redirect_stderr(StringIO()):

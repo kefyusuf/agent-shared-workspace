@@ -16,6 +16,11 @@ def main(argv: list[str] | None = None) -> int:
     enroll.add_argument('--db',type=Path,required=True)
     enroll.add_argument('--name',required=True)
     enroll.add_argument('--provider',required=True)
+    task = sub.add_parser('create-task',help='Create a Ready pilot task as the operator')
+    task.add_argument('--db',type=Path,required=True)
+    task.add_argument('--title',required=True)
+    task.add_argument('--acceptance-criteria',required=True)
+    task.add_argument('--request-key',required=True)
     args = parser.parse_args(argv)
     if not args.db.is_file():
         parser.error('database does not exist; initialize the broker first')
@@ -27,7 +32,10 @@ def main(argv: list[str] | None = None) -> int:
         try:
             if opened['role'] != 'operator':
                 raise WorkspaceError('FORBIDDEN')
-            result = workspace.enroll_agent(operator,args.name,args.provider)
+            if args.command == 'enroll':
+                result = workspace.enroll_agent(operator,args.name,args.provider)
+            else:
+                result = workspace.create_task(operator,args.title,args.acceptance_criteria,args.request_key)
         finally:
             workspace.close_session(operator)
     except WorkspaceError as err:
