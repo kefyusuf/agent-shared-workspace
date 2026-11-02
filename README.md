@@ -1,6 +1,8 @@
-# Agent Shared Workspace — M3.2.1 Compatibility Gate Preparation
+# Agent Shared Workspace — M3.2.2 MCP & Broker Hardening
 
 **Status:** Tested local coordination core with a loopback-only HTTP broker (Python 3.11+, SQLite, no external runtime dependency). **Not production-ready.** Includes a handshake-era MCP stdio adapter tested with independent subprocesses, but no actual Codex/Claude Code CLI run, native session access or web Kanban yet.
+
+M3.2.2 adds legacy MCP protocol-version negotiation and a two-second broker connection idle timeout to reject stalled body reads. See [hardening notes](docs/23-m3.2.2-handshake-and-broker-hardening.md). Real Codex/Claude Code compatibility remains unverified.
 
 M3.2.1 adds a [Windows real-client compatibility pilot guide](docs/22-m3.2.1-provider-compatibility-gate.md), read-only [preflight](scripts/host_preflight.py), safe launcher, operator test-task creation and graceful session logout on normal stdio closure. **Actual Codex and Claude Code runs are still pending.**
 
@@ -66,4 +68,4 @@ A snapshot is a structured checkpoint, **not shared native model context, live s
 - M3.3: Minimal Kanban — not implemented.
 - M4: Live multi-agent adverse-condition pilot and verified cost/quality measurements — not implemented.
 
-An accompanying repository initialization/PR is tracked separately; do not infer a GitHub push or CI result from these local test results.
+GitHub PR and CI status must be verified separately from local test results.

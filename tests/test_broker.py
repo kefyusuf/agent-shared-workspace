@@ -1,6 +1,7 @@
 """Black-box broker tests: real loopback HTTP and real SQLite state."""
 import http.client
 import json
+import socket
 import tempfile
 import threading
 import unittest
@@ -194,6 +195,22 @@ class BrokerTests(unittest.TestCase):
             futures=[pool.submit(claim,a,'claim-a'),pool.submit(claim,b,'claim-b')]
             statuses=[f.result()[0] for f in futures]
         self.assertEqual(sorted(statuses),[200,409])
+
+    def test_incomplete_http_body_is_bounded_and_other_clients_still_work(self):
+        # A local peer must not keep a broker worker occupied indefinitely.
+        sock = socket.create_connection(('127.0.0.1', self.srv.server_port), timeout=3)
+        self.addCleanup(sock.close)
+        sock.settimeout(4)
+        request = (f'POST /v1/session HTTP/1.1\r\n'
+                   f'Host: 127.0.0.1:{self.srv.server_port}\r\n'
+                   'Content-Type: application/json\r\n'
+                   'Content-Length: 100\r\n'
+                   'Connection: close\r\n\r\n').encode() + b'{"credential":'
+        sock.sendall(request)
+        response = sock.recv(4096)
+        self.assertIn(b' 408 ', response.split(b'\r\n', 1)[0])
+        status, body = self.request('/v1/health', method='GET')
+        self.assertEqual((status, body['ok']), (200, True))
 
     def test_query_string_is_not_a_supported_endpoint(self):
         status,r=self.request('/v1/health?token=SECRET', method='GET')
