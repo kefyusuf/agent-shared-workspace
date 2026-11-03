@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import shutil
 import sqlite3
+from contextlib import closing
 import subprocess
 import sys
 
@@ -47,7 +48,7 @@ def _initialized(db: Path = DB) -> bool:
     if not db.is_file():
         return False
     try:
-        with sqlite3.connect(f'file:{db.as_posix()}?mode=ro', uri=True) as con:
+        with closing(sqlite3.connect(f'file:{db.as_posix()}?mode=ro', uri=True)) as con:
             return con.execute('SELECT EXISTS(SELECT 1 FROM projects)').fetchone()[0] == 1
     except sqlite3.Error:
         return False

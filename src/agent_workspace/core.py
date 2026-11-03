@@ -504,11 +504,13 @@ class Workspace:
     @contextmanager
     def _connect(self):
         db = sqlite3.connect(self.db_path, timeout=15.0, isolation_level=None)
-        db.row_factory = sqlite3.Row
-        db.execute("PRAGMA foreign_keys=ON")
-        db.execute("PRAGMA busy_timeout=15000")
-        db.execute("PRAGMA journal_mode=WAL")
         try:
+            # PRAGMA setup may raise on a corrupt or incompatible database;
+            # never leave the handle open (Windows cannot remove open DB files).
+            db.row_factory = sqlite3.Row
+            db.execute("PRAGMA foreign_keys=ON")
+            db.execute("PRAGMA busy_timeout=15000")
+            db.execute("PRAGMA journal_mode=WAL")
             yield db
         finally:
             db.close()
