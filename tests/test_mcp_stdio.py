@@ -236,6 +236,19 @@ class McpStdioTests(unittest.TestCase):
         brain=c.call('brain_brief')
         self.assertNotIn(record['memory_id'],json.dumps(brain))
 
+    def test_normal_stdio_shutdown_revokes_session_and_releases_lease(self):
+        client=self.client(self.a)
+        client.init()
+        task=self.ws.create_task(self.operator, 'Graceful shutdown', 'Do not leave leases held',
+                                 'shutdown-task-'+self.id())
+        acquired=client.call('task_claim', {'task_id':task['task_id'],
+                    'expected_version':0, 'request_key':'shutdown-claim-'+self.id()})
+        self.assertIn('fence_token', acquired)
+        client.close()  # Closing stdin must log out of broker and release task.
+        current=self.ws.get_task(self.operator, task['task_id'])
+        self.assertEqual(current['status'], 'Ready')
+        self.assertGreater(current['version'], acquired['version'])
+
     def test_only_loopback_and_port_range_allowed(self):
         for port in ('99999','garbage','-1'):
             c=self.client(env={'AW_BROKER_PORT':port});c.init()

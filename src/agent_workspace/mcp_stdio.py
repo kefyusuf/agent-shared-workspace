@@ -166,6 +166,20 @@ class BrokerClient:
             raise ClientFailure(code if code in allowed else 'BROKER_REJECTED')
         return reply['result']
 
+    def close(self) -> None:
+        """Best-effort self-logout on graceful stdio termination.
+
+        A killed process cannot do this; existing lease expiry and recovery still apply.
+        """
+        token = self.token
+        self.token = None
+        self.credential = ''
+        if token is not None:
+            try:
+                self._post('/v1/call', {'operation':'close_session','arguments':{}}, token)
+            except (ClientFailure, KeyError, TypeError):
+                pass  # Broker might be unavailable during shutdown.
+
     def call(self, operation: str, args: dict) -> Any:
         if not self.attempted:
             self.attempted = True
@@ -257,25 +271,28 @@ def main() -> int:
                                   os.environ.get('AW_BROKER_PORT','8765')))
     stdin=sys.stdin.buffer
     stdout=sys.stdout
-    while True:
-        raw=stdin.readline(MAX_LINE+1)
-        if not raw:
-            break
-        if len(raw)>MAX_LINE:
-            while raw and not raw.endswith(b'\n'):
-                raw=stdin.readline(MAX_LINE+1)
-            response=_response(None,code=-32700,message='Parse error')
-        else:
-            try:
-                val=json.loads(raw.decode('utf-8'),
-                               object_pairs_hook=_strict_object,
-                               parse_constant=lambda _: (_ for _ in ()).throw(ValueError('bad constant')))
-                response=server.handle(val)
-            except (ValueError, UnicodeError):
+    try:
+        while True:
+            raw=stdin.readline(MAX_LINE+1)
+            if not raw:
+                break
+            if len(raw)>MAX_LINE:
+                while raw and not raw.endswith(b'\n'):
+                    raw=stdin.readline(MAX_LINE+1)
                 response=_response(None,code=-32700,message='Parse error')
-        if response is not None:
-            stdout.write(json.dumps(response,ensure_ascii=False,separators=(',',':'))+'\n')
-            stdout.flush()
+            else:
+                try:
+                    val=json.loads(raw.decode('utf-8'),
+                                   object_pairs_hook=_strict_object,
+                                   parse_constant=lambda _: (_ for _ in ()).throw(ValueError('bad constant')))
+                    response=server.handle(val)
+                except (ValueError, UnicodeError):
+                    response=_response(None,code=-32700,message='Parse error')
+            if response is not None:
+                stdout.write(json.dumps(response,ensure_ascii=False,separators=(',',':'))+'\n')
+                stdout.flush()
+    finally:
+        server.broker.close()
     return 0
 
 

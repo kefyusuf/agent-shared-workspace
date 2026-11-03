@@ -1,6 +1,8 @@
-# Agent Shared Workspace — M3.2 MCP stdio Bridge Prototype
+# Agent Shared Workspace — M3.2.1 Compatibility Gate Preparation
 
 **Status:** Tested local coordination core with a loopback-only HTTP broker (Python 3.11+, SQLite, no external runtime dependency). **Not production-ready.** Includes a handshake-era MCP stdio adapter tested with independent subprocesses, but no actual Codex/Claude Code CLI run, native session access or web Kanban yet.
+
+M3.2.1 adds a [Windows real-client compatibility pilot guide](docs/22-m3.2.1-provider-compatibility-gate.md), read-only [preflight](scripts/host_preflight.py), safe launcher, operator test-task creation and graceful session logout on normal stdio closure. **Actual Codex and Claude Code runs are still pending.**
 
 M3.2 adds a **stdio MCP adapter** using independent agent identities over the M3.1 broker. See [M3.2 setup and security contracts](docs/21-m3.2-mcp-stdio.md).
 
