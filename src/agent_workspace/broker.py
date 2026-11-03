@@ -11,6 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
 import sqlite3
+from contextlib import closing
 from typing import Any
 
 from .core import Workspace, WorkspaceError
@@ -226,7 +227,7 @@ def main() -> int:
         # Sensitive output printed once to the trusted local operator only.
         print(json.dumps(workspace.bootstrap(args.name, args.root), indent=2))
         return 0
-    with sqlite3.connect(workspace.db_path) as db:
+    with closing(sqlite3.connect(workspace.db_path)) as db:
         if db.execute("SELECT count(*) FROM projects").fetchone()[0] != 1:
             parser.error("workspace is not initialized")
     server = create_server(workspace, port=args.port)

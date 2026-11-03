@@ -2,6 +2,7 @@
 import concurrent.futures
 import pathlib
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 
@@ -284,7 +285,7 @@ class MemoryTests(unittest.TestCase):
         self.assertEqual([], other.memory_changes(other_token)['changes'])
 
     def test_migration_schema_checks(self):
-        with sqlite3.connect(self.db) as con:
+        with closing(sqlite3.connect(self.db)) as con, con:
             con.execute('PRAGMA user_version=6')
         self.error('UNSUPPORTED_SCHEMA', lambda: Workspace(self.db, clock=self.clock))
 

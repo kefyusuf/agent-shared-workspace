@@ -1,7 +1,7 @@
 """Script orchestration tests: no provider CLI or Windows environment required."""
 from __future__ import annotations
 
-from contextlib import redirect_stdout
+from contextlib import closing, redirect_stdout
 from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
@@ -56,7 +56,7 @@ class WorkspaceScriptTests(unittest.TestCase):
             cli._setup(self.db)
         self.assertIn('already initialized', output.getvalue())
         self.assertNotIn('CREDENTIAL', output.getvalue())
-        with sqlite3.connect(self.db) as db:
+        with closing(sqlite3.connect(self.db)) as db, db:
             self.assertEqual(db.execute('SELECT count(*) FROM principals').fetchone()[0], 3)
             self.assertEqual(db.execute('SELECT count(*) FROM tasks').fetchone()[0], 1)
 

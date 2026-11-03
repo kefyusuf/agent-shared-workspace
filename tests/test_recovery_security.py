@@ -2,6 +2,7 @@
 import pathlib
 import os
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 
@@ -49,7 +50,7 @@ class RecoverySecurityTests(unittest.TestCase):
     def test_database_created_private_before_open(self):
         self.assertEqual(0o600, self.db.stat().st_mode & 0o777)
         target = pathlib.Path(self.temp.name) / 'real.db'
-        with sqlite3.connect(target) as db:
+        with closing(sqlite3.connect(target)) as db, db:
             db.execute('CREATE TABLE safe (id INTEGER)')
         symlink = pathlib.Path(self.temp.name) / 'alias.db'
         symlink.symlink_to(target)
@@ -58,12 +59,12 @@ class RecoverySecurityTests(unittest.TestCase):
     def test_schema_version_is_explicit_and_persists(self):
         self.assertEqual(5, self.ws.schema_version())
         self.assertEqual(5, Workspace(self.db, clock=self.clock).schema_version())
-        with sqlite3.connect(self.db) as db:
+        with closing(sqlite3.connect(self.db)) as db, db:
             self.assertEqual([1, 2, 3, 4, 5], [x[0] for x in db.execute('SELECT version FROM schema_migrations ORDER BY version')])
 
     def test_upgrade_legacy_version_zero_with_records_preserved(self):
         task, lease = self.claim()
-        with sqlite3.connect(self.db) as db:
+        with closing(sqlite3.connect(self.db)) as db, db:
             db.execute('DROP TABLE schema_migrations')
             db.execute('DROP TABLE context_handoffs')
             db.execute('DROP TABLE context_sources')
@@ -80,18 +81,18 @@ class RecoverySecurityTests(unittest.TestCase):
         self.assertEqual(lease['fence_token'], 1)
 
     def test_rejects_newer_unknown_schema_without_overwriting(self):
-        with sqlite3.connect(self.db) as db:
+        with closing(sqlite3.connect(self.db)) as db, db:
             db.execute('PRAGMA user_version = 99')
         self.err('UNSUPPORTED_SCHEMA', lambda: Workspace(self.db, clock=self.clock))
-        with sqlite3.connect(self.db) as db:
+        with closing(sqlite3.connect(self.db)) as db, db:
             self.assertEqual(99, db.execute('PRAGMA user_version').fetchone()[0])
 
     def test_rejects_partial_unversioned_database(self):
         path = pathlib.Path(self.temp.name) / 'partial.db'
-        with sqlite3.connect(path) as db:
+        with closing(sqlite3.connect(path)) as db, db:
             db.execute('CREATE TABLE projects (project_id TEXT PRIMARY KEY)')
         self.err('UNSUPPORTED_SCHEMA', lambda: Workspace(path, clock=self.clock))
-        with sqlite3.connect(path) as db:
+        with closing(sqlite3.connect(path)) as db, db:
             self.assertFalse(db.execute("SELECT 1 FROM sqlite_master WHERE name='principals'").fetchone())
 
     def test_revoke_session_invalidates_session_and_requeues_tasks(self):
@@ -175,7 +176,7 @@ class RecoverySecurityTests(unittest.TestCase):
         msg = self.ws.send_message(self.b, self.agent['agent_id'], 'handoff', 'msg')
         self.ws.disable_agent(self.op, self.agent['agent_id'], 'disable', 'retired')
         self.assertTrue(any(e['action'] == 'agent.disabled' for e in self.ws.audit_events(self.op)['events']))
-        with sqlite3.connect(self.db) as db:
+        with closing(sqlite3.connect(self.db)) as db, db:
             self.assertEqual('handoff', db.execute('SELECT body FROM messages WHERE message_id=?', (msg['message_id'],)).fetchone()[0])
 
     def test_credential_rotation_invalidates_old_password_and_sessions(self):
@@ -192,7 +193,7 @@ class RecoverySecurityTests(unittest.TestCase):
 
     def test_rotation_preserves_audit_without_secret_in_any_stored_result(self):
         rotated = self.ws.rotate_agent_credential(self.op, self.agent['agent_id'])
-        with sqlite3.connect(self.db) as db:
+        with closing(sqlite3.connect(self.db)) as db, db:
             rows = db.execute('SELECT response_json FROM idempotency').fetchall()
             self.assertTrue(all(rotated['credential'] not in r[0] for r in rows))
             self.assertEqual(1, db.execute("SELECT COUNT(*) FROM audit_events WHERE action='agent.credential_rotated'").fetchone()[0])

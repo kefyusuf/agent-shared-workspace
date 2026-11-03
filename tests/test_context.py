@@ -2,6 +2,7 @@
 import concurrent.futures
 import pathlib
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 
@@ -268,7 +269,7 @@ class ContextTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self.publish()
         self.ws.inject_failpoint(None)
-        with sqlite3.connect(self.db) as db:
+        with closing(sqlite3.connect(self.db)) as db, db:
             self.assertEqual(0, db.execute('SELECT count(*) FROM context_snapshots').fetchone()[0])
             self.assertEqual(0, db.execute('SELECT count(*) FROM context_sources').fetchone()[0])
         self.assertEqual([], self.ws.list_task_contexts(self.a,self.task_id)['snapshots'])
@@ -357,14 +358,14 @@ class ContextTests(unittest.TestCase):
         self.assertEqual(snap['snapshot_id'],self.ws.get_context(reconnected,snap['snapshot_id'])['snapshot_id'])
 
     def test_partial_v4_to_v5_schema_is_rejected_transactionally(self):
-        with sqlite3.connect(self.db) as db:
+        with closing(sqlite3.connect(self.db)) as db, db:
             for table in ('context_sources','context_handoffs','context_snapshots'):
                 db.execute('DROP TABLE '+table)
             db.execute('DELETE FROM schema_migrations WHERE version=5')
             db.execute('PRAGMA user_version=4')
             db.execute('CREATE TABLE context_snapshots (snapshot_id TEXT)')
         self.err('UNSUPPORTED_SCHEMA', lambda: Workspace(self.db, clock=self.clock))
-        with sqlite3.connect(self.db) as db:
+        with closing(sqlite3.connect(self.db)) as db, db:
             self.assertEqual(4, db.execute('PRAGMA user_version').fetchone()[0])
             self.assertIsNone(db.execute("SELECT name FROM sqlite_master WHERE name='context_sources'").fetchone())
 

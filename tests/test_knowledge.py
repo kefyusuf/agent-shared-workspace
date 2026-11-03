@@ -2,6 +2,7 @@
 import concurrent.futures
 import pathlib
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 
@@ -244,7 +245,7 @@ class KnowledgeTests(unittest.TestCase):
     def test_schema_migration_from_v2_preserves_existing_rows(self):
         # Simulate the actual M1.3 versioned database: known base tables remain,
         # new knowledge schema is missing and user_version tracks version 2.
-        with sqlite3.connect(self.db_path) as db:
+        with closing(sqlite3.connect(self.db_path)) as db, db:
             db.execute('DROP TABLE IF EXISTS context_handoffs')
             db.execute('DROP TABLE IF EXISTS context_sources')
             db.execute('DROP TABLE IF EXISTS context_snapshots')
@@ -265,7 +266,7 @@ class KnowledgeTests(unittest.TestCase):
         self.assertEqual('proposed', proposed['status'])
 
     def test_reject_missing_knowledge_schema_when_v3(self):
-        with sqlite3.connect(self.db_path) as db:
+        with closing(sqlite3.connect(self.db_path)) as db, db:
             db.execute('DROP TABLE IF EXISTS knowledge_sources')
             db.execute('PRAGMA user_version=3')
         self.err('UNSUPPORTED_SCHEMA', lambda: Workspace(self.db_path, clock=self.clock))
@@ -291,13 +292,13 @@ class KnowledgeTests(unittest.TestCase):
         self.assertEqual([proposals[3]['decision_id'], proposals[2]['decision_id']], ids)
 
     def test_corrupt_version_two_migration_log_is_not_silently_repaired(self):
-        with sqlite3.connect(self.db_path) as db:
+        with closing(sqlite3.connect(self.db_path)) as db, db:
             db.execute('DROP TABLE knowledge_sources')
             db.execute('DROP TABLE knowledge_decisions')
             db.execute('DELETE FROM schema_migrations WHERE version=2')
             db.execute('PRAGMA user_version=2')
         self.err('UNSUPPORTED_SCHEMA', lambda: Workspace(self.db_path, clock=self.clock))
-        with sqlite3.connect(self.db_path) as db:
+        with closing(sqlite3.connect(self.db_path)) as db, db:
             self.assertEqual(2, db.execute('PRAGMA user_version').fetchone()[0])
             self.assertIsNone(db.execute("SELECT name FROM sqlite_master WHERE name='knowledge_decisions'").fetchone())
 
