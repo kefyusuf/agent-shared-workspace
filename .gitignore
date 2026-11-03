@@ -1,0 +1,17 @@
+# Local databases and bearer-credential material
+.local/
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+.env
+.env.*
+
+# Python build/test files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+.venv/
