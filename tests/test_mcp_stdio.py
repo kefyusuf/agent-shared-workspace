@@ -114,6 +114,28 @@ class McpStdioTests(unittest.TestCase):
         self.assertNotIn('bootstrap',{t['name'] for t in listing})
         self.assertEqual(c.request('ping')['result'],{})
 
+    def test_legacy_client_version_is_negotiated_not_overridden(self):
+        for version in ('2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25'):
+            with self.subTest(version=version):
+                client=self.client()
+                params={**INIT['params'], 'protocolVersion':version}
+                answer=client.request('initialize', params)
+                self.assertEqual(answer['result']['protocolVersion'], version)
+                client.send(NOTIFY)
+                self.assertIn('tools', client.request('tools/list')['result'])
+
+    def test_unknown_modern_version_is_not_falsely_advertised(self):
+        client=self.client()
+        params={**INIT['params'], 'protocolVersion':'2026-07-28'}
+        result=client.request('initialize', params)
+        self.assertEqual(result['result']['protocolVersion'], '2025-11-25')
+
+    def test_empty_version_is_rejected_before_state_transition(self):
+        client=self.client()
+        params={**INIT['params'], 'protocolVersion':''}
+        self.assertEqual(client.request('initialize', params)['error']['code'], -32602)
+        self.assertEqual(client.request('initialize', INIT['params'])['result']['protocolVersion'], '2025-11-25')
+
     def test_client_requires_initialize(self):
         c=self.client()
         self.assertEqual(c.request('tools/list')['error']['code'],-32002)

@@ -16,6 +16,7 @@ from typing import Any
 from .core import Workspace, WorkspaceError
 
 _MAX_BODY = 32768
+_HEADER_BODY_TIMEOUT_SECONDS = 2.0
 
 # Explicitly exported domain operations. A private method can never be selected
 # by an HTTP client. The domain layer independently checks actor permissions.
@@ -61,6 +62,12 @@ def create_server(workspace: Workspace, *, host: str = "127.0.0.1", port: int = 
         server_version = "AgentWorkspaceBroker"
         sys_version = ""
 
+        def setup(self) -> None:
+            super().setup()
+            # Local clients can otherwise hold an unbounded worker thread by
+            # declaring a JSON body and never completing it.
+            self.connection.settimeout(_HEADER_BODY_TIMEOUT_SECONDS)
+
         def log_message(self, format: str, *args: Any) -> None:
             # Never log URLs, credentials, bearer tokens or response bodies.
             pass
@@ -104,7 +111,10 @@ def create_server(workspace: Workspace, *, host: str = "127.0.0.1", port: int = 
                 raise _HTTPError(413, "PAYLOAD_TOO_LARGE")
             if size <= 0:
                 raise _HTTPError(400, "INVALID_REQUEST")
-            raw = self.rfile.read(size)
+            try:
+                raw = self.rfile.read(size)
+            except (TimeoutError, OSError):
+                raise _HTTPError(408, "REQUEST_TIMEOUT") from None
             if len(raw) != size:
                 raise _HTTPError(400, "INVALID_REQUEST")
             try:
