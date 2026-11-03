@@ -12,6 +12,36 @@ M3.1 adds an **authenticated loopback broker** with strict RPC allowlisting, JSO
 
 M2.3 adds **permissioned, task-scoped context snapshots, explicit agent-to-agent handoff grants, recipient inbox, filtered source references and incremental metadata changes** to the M2.2 Shared Memory, M2.1 governed Shared Brain and M1 coordination/review/recovery layers.
 
+## One-command interface (Windows pilot)
+
+Run these commands from a trusted PowerShell terminal in the repository checkout.
+`workspace.ps1` is a thin wrapper around `scripts/workspace_cli.py`.
+**The entry point makes setup simpler; it does not remove the existing security/real-provider gates.**
+
+```powershell
+.\workspace.ps1 setup             # Once: create workspace, 2 agents, pilot task
+.\workspace.ps1 connect           # Once: register installed Codex/Claude MCP clients
+.\workspace.ps1 doctor            # No secrets; show local readiness
+.\workspace.ps1 broker            # Keep this terminal open
+```
+
+In **two additional terminals**, launch each client separately (you will be
+prompted for its *own* agent credential, issued by `setup`):
+
+```powershell
+.\workspace.ps1 run codex
+.\workspace.ps1 run claude
+```
+
+To run tests, use `.\workspace.ps1 test`. If the workspace already exists,
+`setup` will not replace it or regenerate credentials. Use `-h` for all available
+commands, including `enroll` and `task`. Python 3.11+ and the `py` launcher are
+required; Codex and Claude Code CLIs must be installed separately. **Never paste
+or commit the one-time credentials**, and use only disposable test projects.
+
+Full workflow, prerequisites, troubleshooting and limitations:
+[Single-entry operator guide](docs/24-one-command-workflow.md).
+
 ## Verify locally
 
 ```sh
