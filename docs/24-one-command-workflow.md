@@ -88,6 +88,14 @@ For non-Windows usage, the same orchestration logic can be invoked as
 `python scripts/workspace_cli.py ...`; it has not yet received provider-specific
 integration testing on other operating systems.
 
+The `doctor` command additionally reports `codex_mcp_registered` and
+`claude_mcp_registered` using each installed CLI's read-only `mcp get agent_workspace`
+command. The command hides all CLI output, including configuration values.
+A `true` value means the named registration exists, **not** that its executable
+path is current, that credentials work, or that the real provider successfully
+invoked an MCP tool. Both real-provider and OS-isolation gates remain open in
+[Issue #7](https://github.com/kefyusuf/agent-shared-workspace/issues/7).
+
 ## Security and known limitations
 
 - Both the broker and `workspace.ps1` must run on the **same machine**. The socket

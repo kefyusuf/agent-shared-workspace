@@ -118,6 +118,23 @@ def _task(title: str, key: str, db: Path = DB) -> None:
         ws.close_session(token)
 
 
+def _mcp_registered(provider: str) -> bool:
+    """Check that a named MCP entry exists; this is NOT a live provider test."""
+    executable = shutil.which(provider)
+    if not executable:
+        return False
+    try:
+        # Never print 'mcp get' output: old local configs may contain secrets.
+        probe = subprocess.run(
+            [executable, 'mcp', 'get', 'agent_workspace'],
+            capture_output=True, text=True, errors='replace',
+            timeout=5, check=False, cwd=ROOT,
+        )
+        return probe.returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
 def _doctor(port: int, db: Path = DB) -> dict[str, bool | str]:
     result = {
         'python_3_11_plus': sys.version_info >= (3, 11),
@@ -125,6 +142,8 @@ def _doctor(port: int, db: Path = DB) -> dict[str, bool | str]:
         'broker_reachable': _health(port),
         'codex_installed': shutil.which('codex') is not None,
         'claude_installed': shutil.which('claude') is not None,
+        'codex_mcp_registered': _mcp_registered('codex'),
+        'claude_mcp_registered': _mcp_registered('claude'),
         'real_provider_verified': False,
     }
     print(json.dumps(result, indent=2))

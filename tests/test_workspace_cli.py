@@ -146,6 +146,50 @@ class WorkspaceScriptTests(unittest.TestCase):
         self.assertFalse(report['broker_reachable'])
         self.assertEqual(json.loads(output.getvalue()),report)
 
+    def test_doctor_detects_individual_mcp_registrations_without_claiming_real_client_support(self):
+        calls = []
+        def fake_run(command, **kwargs):
+            calls.append((command, kwargs))
+            return SimpleNamespace(returncode=0 if command[0] == 'codex' else 1)
+        with patch.object(cli.shutil, 'which', side_effect=lambda name: name), \
+                patch.object(cli.subprocess, 'run', side_effect=fake_run), \
+                patch.object(cli, '_health', return_value=False), \
+                redirect_stdout(StringIO()) as output:
+            result = cli._doctor(8765, self.db)
+        self.assertTrue(result['codex_installed'])
+        self.assertTrue(result['claude_installed'])
+        self.assertTrue(result['codex_mcp_registered'])
+        self.assertFalse(result['claude_mcp_registered'])
+        self.assertFalse(result['real_provider_verified'])
+        self.assertEqual(len(calls), 2)
+        self.assertEqual([call[0][1:] for call in calls],
+                         [['mcp', 'get', 'agent_workspace']] * 2)
+        self.assertTrue(all(call[1]['capture_output'] and call[1]['timeout'] == 5 for call in calls))
+        self.assertEqual(result, json.loads(output.getvalue()))
+
+    def test_doctor_skips_mcp_probes_when_cli_is_missing(self):
+        with patch.object(cli.shutil, 'which', return_value=None), \
+                patch.object(cli.subprocess, 'run') as run, \
+                patch.object(cli, '_health', return_value=False), \
+                redirect_stdout(StringIO()):
+            result = cli._doctor(8765, self.db)
+        run.assert_not_called()
+        self.assertFalse(result['codex_mcp_registered'])
+        self.assertFalse(result['claude_mcp_registered'])
+
+    def test_doctor_swallows_registration_failures_without_echoing_sensitive_cli_output(self):
+        secret = 'private-mcp-config-token'
+        def broken(*_args, **_kwargs):
+            raise OSError(secret)
+        with patch.object(cli.shutil, 'which', side_effect=lambda p: p), \
+                patch.object(cli.subprocess, 'run', side_effect=broken), \
+                patch.object(cli, '_health', return_value=False), \
+                redirect_stdout(StringIO()) as output:
+            result = cli._doctor(8765, self.db)
+        self.assertFalse(result['codex_mcp_registered'])
+        self.assertFalse(result['claude_mcp_registered'])
+        self.assertNotIn(secret, output.getvalue())
+
     def test_powershell_wrapper_remains_thin_and_has_no_secrets(self):
         wrapper = (HERE / 'workspace.ps1').read_text(encoding='utf-8')
         self.assertIn('scripts/workspace_cli.py',wrapper)
